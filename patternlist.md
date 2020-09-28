@@ -1,3 +1,12 @@
+"Snake":
+snake_top
+snake_left
+snake_down
+snake_right
+chess_snake_top
+chess_snake_left
+chess_snake_down
+chess_snake_right
 Diagonal:
 "diagonal_left_top"
 "diagonal_right_top"
@@ -16,3 +25,4 @@ Layer_by_layer:
 Other:
 "random"
 "smoothdiagonal"
+#Дарк все еще пидор
