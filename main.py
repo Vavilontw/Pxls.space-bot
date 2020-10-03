@@ -19,6 +19,7 @@ import utils.image as image
 class Client():
 
     def __init__(self, origin_art, pattern):
+        self.cd = 1
         self.origin_art = origin_art
         self.pattern = pattern
         info = json.loads(board.get_board_info())
@@ -101,17 +102,18 @@ class Client():
     
 
     async def on_pixel(self, message):
-        x = message["pixels"][0]["x"]
-        y = message["pixels"][0]["y"]
-        c = message["pixels"][0]["color"]
+        for px in range(len(message["pixels"])):
+            x = message["pixels"][px]["x"]
+            y = message["pixels"][px]["y"]
+            c = message["pixels"][px]["color"]
 
-        if (x, y, c) in self.art:
-            await self.on_good_pixel(x, y, c)
-            print(f"good pixel x:{x} y:{y}")
+            if (x, y, c) in self.art:
+                await self.on_good_pixel(x, y, c)
+                print(f"good pixel x:{x} y:{y}")
 
-        if (x, y) in self.xylist and not (x, y, c) in self.origin_art:
-            await self.on_bad_pixel(x, y, c) 
-            print(f"bad pixel x:{x} y:{y}")
+            if (x, y) in self.xylist and not (x, y, c) in self.origin_art:
+                await self.on_bad_pixel(x, y, c) 
+                print(f"bad pixel x:{x} y:{y}")
 
 
     async def on_good_pixel(self, x, y, c):
