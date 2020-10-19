@@ -1,3 +1,5 @@
+from io import BytesIO
+import urllib.parse
 import asyncio
 import argparse
 import random
@@ -6,9 +8,7 @@ import time
 import re
 
 from PIL import Image
-from io import BytesIO
 import websockets
-import urllib.parse
 import requests
 
 import utils.board as board
@@ -16,24 +16,21 @@ import utils.template as template
 import utils.image as image
 
 
+
 class Client():
 
-    def __init__(self, origin_art, pattern):
+    def __init__(self, origin_art, art, xylist):
         self.cd = 1
         self.origin_art = origin_art
-        self.pattern = pattern
-        info = json.loads(board.get_board_info())
-        board_ = board.get_board_data()
-        board_ = board.board2list(board_, info["width"])
-        self.art = image.get_diff(self.origin_art, board_)
-        self.xylist = image.art2xy(self.origin_art)
+        self.art = art
+        self.xylist = xylist
  
 
-    async def run(self, token, user_agent):
+    async def run(self, token, user_agent, pattern):
 
             wsurl = f"wss://pxls.space/ws"
 
-            print(f"{len(self.art)}/{len(self.origin_art)} [{round((len(self.art)/len(self.origin_art))*100)}%], Pixel last")
+            print(f"{len(self.art)}/{len(self.origin_art)} [{round(((len(self.origin_art) - len(self.art))/len(self.origin_art))*100, 2)}%], Pixel done")
 
             async with websockets.connect(
                 wsurl,
@@ -50,16 +47,14 @@ class Client():
 
                     watch = asyncio.create_task(self.watch(ws))
                     send = asyncio.create_task(self.send(ws))
-                    sort = asyncio.create_task(self.sort())
+                    sort = asyncio.create_task(self.sort(pattern))
 
                     await asyncio.gather(watch, send, sort)
 
 
-    async def sort(self):
-        module = __import__('utils.pattern', fromlist=["object"])
-        mode = getattr(module, self.pattern)
+    async def sort(self, pattern):
         while True:
-            self.art = sorted(self.art, key = mode)
+            self.art = sorted(self.art, key = pattern)
             await asyncio.sleep(0.5)
 
 
@@ -84,7 +79,10 @@ class Client():
 
     async def watch(self, ws):
         async for message in ws:
-            message = json.loads(message)
+            try:
+                message = json.loads(message)
+            except json.decoder.JSONDecodeError:
+                pass
             if message["type"] == "pixel":
                 await self.on_pixel(message)
                 
@@ -129,7 +127,7 @@ class Client():
     async def on_chat_message(self, message):
         if self.nickname in message["message"]["message_raw"]:
             print("Chat ping!")
-            answer = input("Return? y/n")
+            answer = input("Return? y/n: ")
             if answer == "y":
                 return
             elif answer == "n":
@@ -143,7 +141,7 @@ class Client():
 
 
     async def on_cooldown(self,message):                  
-        self.cd = float(message["wait"]) + random.uniform(1.0, 2.0)
+        self.cd = float(message["wait"]) + random.uniform(2.0, 3.0)
 
 
     async def on_alert(self, message):
@@ -155,8 +153,6 @@ class Client():
 
 if __name__ == "__main__":
 
-    url = "pxls.space"
-    
     parser = argparse.ArgumentParser(description='Pxls.space bot')
 
     parser.add_argument('-t',action="store", dest="token", required=True)
@@ -164,7 +160,7 @@ if __name__ == "__main__":
     parser.add_argument('-x',action="store", dest="x",type=int)
     parser.add_argument('-y',action="store", dest="y",type=int)
     parser.add_argument('-p',action="store", dest="pattern", default="lbl_top")
-    parser.add_argument('-ua',action="store", dest="ua", default="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/536.35 (KHTML, like Gecko) Chrome/82.0.414 Safari/537.36")
+    parser.add_argument('-ua',action="store", dest="ua", default="Mozilla/5.0 (Windows NT 7.0; WOW64; rv:40.0) Gecko/20100101 Firefox/40.0 OWASMIME/4.0500")
     parser.add_argument('-link',action="store", dest="template")
 
     args = parser.parse_args()
@@ -176,7 +172,6 @@ if __name__ == "__main__":
 
         fragment = urllib.parse.urlparse(args.template).fragment
         params = dict(urllib.parse.parse_qsl(fragment))
-        print(params)
         
         temp_image = Image.open(
             BytesIO(
@@ -195,13 +190,22 @@ if __name__ == "__main__":
 
     if not args.file == None:
         file = Image.open(args.file)
-
+    
+    
     info = json.loads(board.get_board_info())
     origin_art = image.art2list(file, info["palette"], x, y)
+    board_ = board.get_board_data()
+    board_ = board.board2list(board_, info["width"], file.size, x, y)
+    art = image.get_diff(origin_art, board_)
+    xylist = image.art2xy(origin_art)
 
-    client = Client(origin_art, args.pattern)
+    module = __import__('utils.pattern', fromlist=["object"])
+    class_ = getattr(module, f"Pattern")(file.size, x, y)
+    mode = getattr(class_, args.pattern)
+
+    client = Client(origin_art, art, xylist)
 
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
-    loop.run_until_complete(client.run(args.token, args.ua))
+    loop.run_until_complete(client.run(args.token, args.ua, mode))
 

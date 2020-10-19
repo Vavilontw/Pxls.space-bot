@@ -28,4 +28,3 @@ def detemplatize(image, scale):
 def scale_detect(image):
     cord = image.load()
     return abs(cord[0,0][3] - cord[0,1][3])
-

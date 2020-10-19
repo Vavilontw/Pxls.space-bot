@@ -13,17 +13,14 @@ def get_board_info():
     return requests.get(boardurl).text
 
 
-def board2list(board, width):
-    board_size = len(board)
-    height = board_size / width
-    height = math.floor(height)
+def board2list(board, width, art_size, artx, arty):
+    board = [board[x : x + width] for x in range(0, len(board), width)]
     boardlist = []
-    for i in range(board_size):
-        b = board[i]
-        if b == b'':
-            break
-        x = i % width
-        y = math.floor(i / width)
-        boardlist.append((x,y,b))
+    for x in range(art_size[0]):
+        for y in range(art_size[1]):
+            b = board[arty + y][artx + x]
+            #print(arty + y,artx + x)
+            xx = artx + x
+            yy = arty + y
+            boardlist.append((xx, yy, b)) 
     return boardlist
-

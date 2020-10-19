@@ -25,4 +25,4 @@ Layer_by_layer:
 Other:
 "random"
 "smoothdiagonal"
-#Дарк все еще пидор
+"circle"
